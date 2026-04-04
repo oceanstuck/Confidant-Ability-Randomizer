@@ -9,12 +9,12 @@ class AbilityEntry:
         self.reqs = reqs
         self.bitflag = bitflag
 
-    def read(self, abilityBytes):
-        reqs = int.from_bytes(abilityBytes.read(2)) # dont really intend to randomize additional reqs, so just treat this as an int
-        rank = int.from_bytes(abilityBytes.read(2))
-        abilityId = int.from_bytes(abilityBytes.read(2))
-        abilityBytes.seek(8)
-        bitflag = int.from_bytes(abilityBytes.read(4))
+    def from_bytes(abilityBytes):
+        reqs = int.from_bytes(abilityBytes[:2]) # dont really intend to randomize additional reqs, so just treat this as an int
+        rank = int.from_bytes(abilityBytes[2:4])
+        abilityId = int.from_bytes(abilityBytes[4:6])
+        # abilityBytes.seek(8)
+        bitflag = int.from_bytes(abilityBytes[8:])
 
         return AbilityEntry(rank, abilityId, reqs, bitflag)
 
@@ -32,10 +32,12 @@ class ConfidantEntry:
     def __init__(self, abilities = []):
         self.abilities = abilities
 
-    def read(confidantBytes):
+    def from_bytes(confidantBytes):
         abilities = []
         for i in range(10):
-            abilities.append(AbilityEntry.read(confidantBytes.read(12)))
+            start = i * 12
+            end = (i + 1) * 12
+            abilities.append(AbilityEntry.from_bytes(confidantBytes[start:end]))
         return ConfidantEntry(abilities)
 
     def write(self, file):
@@ -45,7 +47,7 @@ class ConfidantEntry:
 def ReadCmmFunctionTable(file):
     for i in range(38):
         file.seek(32 + i * 120)
-        confidantList.append(ConfidantEntry.read(file.read(120)))
+        confidantList.append(ConfidantEntry.from_bytes(file.read(120)))
 
 def ShuffleAbilities():
     platonicIdDict = { 3: 23, 4: 24, 7: 25, 10: 26, 11: 27, 14: 28, 15: 29, 16: 30, 18: 31, 21: 32, 33: 34, 36: 37 }
@@ -58,36 +60,34 @@ def ShuffleAbilities():
     trimmedConfidantDict[36] = confidantList[36]
 
     allAbilityEntries = []
-    for i, confidant in trimmedConfidantDict:
-        for ability in confidant:
+    for confidant in trimmedConfidantDict.values():
+        for ability in confidant.abilities:
             if ability.abilityId != 0:
                 allAbilityEntries.append(ability)
 
     newConfidantDict = {}
+    availableConfidants = list(trimmedConfidantDict)
     for i in range(38):
         newConfidantDict[i] = ConfidantEntry()
 
     for ability in allAbilityEntries:
-        confidantId = random.randint(1, 23)
-        if confidantId > 21:
-            confidantId += 15
-        maxAbilities = 10
+        confidantId = availableConfidants[random.randint(0, len(availableConfidants) - 1)]
+        print(f"confidant id {confidantId}")
 
+        maxAbilities = 10
         if preserveRank:
             maxAbilities = GetNumAbilities(confidantId)
-
-        while len(newConfidantDict[confidantId].abilities) >= maxAbilities:
-            confidantId = random.randint(1, 23)
-            if confidantId > 21:
-                confidantId += 15
-            if preserveRank:
-                maxAbilities = GetNumAbilities(confidantId)
+        print(f"max abilities {maxAbilities}")
 
         if not preserveRank:
             ability.rank = random.randint(1, 10)
-        newConfidantDict[confidantId].append(ability)
+        newConfidantDict[confidantId].abilities.append(ability)
+        print(f"appended ability to confidant {confidantId}, ability length {len(newConfidantDict[confidantId].abilities)}")
+        if len(newConfidantDict[confidantId].abilities) >= maxAbilities:
+            availableConfidants.remove(confidantId)
+            print(f"removed {confidantId} from available confidants")
 
-    for i, confidant in newConfidantDict:
+    for confidant in newConfidantDict.values():
         while len(confidant.abilities) < 10:
             confidant.abilities.append(AbilityEntry.empty())
 
