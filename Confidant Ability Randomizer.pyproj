@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>be10990d-6b19-4c7a-b64e-6124e7a82546</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Confidant_Ability_Randomizer.py</StartupFile>
+    <StartupFile>p5rpc.confidantabilityrandomizer\FEmulator\PAK\INIT\CMM.BIN\randomize.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Confidant_Ability_Randomizer.py" />
+    <Compile Include="p5rpc.confidantabilityrandomizer\FEmulator\PAK\INIT\CMM.BIN\randomize.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="p5rpc.confidantabilityrandomizer\" />
@@ -31,7 +31,7 @@
     <Folder Include="p5rpc.confidantabilityrandomizer\FEmulator\PAK\INIT\CMM.BIN\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="cmmFunctionTable.ctd" />
+    <Content Include="p5rpc.confidantabilityrandomizer\FEmulator\PAK\INIT\CMM.BIN\cmmFunctionTable.ctd" />
     <Content Include="p5rpc.confidantabilityrandomizer\FEmulator\PAK\INIT\CMM.BIN\copy cmmFunctionTable here.txt" />
     <Content Include="p5rpc.confidantabilityrandomizer\ModConfig.json" />
   </ItemGroup>
