@@ -59,7 +59,7 @@ def ShuffleAbilities():
 
     trimmedConfidantDict = {}
 
-    for i in range(1, 21):
+    for i in range(1, 22):
         trimmedConfidantDict[i] = confidantList[i]
     trimmedConfidantDict[35] = confidantList[35]
     trimmedConfidantDict[36] = confidantList[36]
@@ -76,6 +76,7 @@ def ShuffleAbilities():
         newConfidantDict[i] = ConfidantEntry()
 
     for ability in allAbilityEntries:
+        # print(f"ability id {ability.abilityId}")
         confidantId = availableConfidants[random.randint(0, len(availableConfidants) - 1)]
         print(f"confidant id {confidantId}")
 
