@@ -10,27 +10,30 @@ class AbilityEntry:
         self.bitflag = bitflag
 
     def from_bytes(abilityBytes):
-        reqs = int.from_bytes(abilityBytes[:2]) # dont really intend to randomize additional reqs, so just treat this as an int
-        rank = int.from_bytes(abilityBytes[2:4])
-        abilityId = int.from_bytes(abilityBytes[4:6])
+        reqs = int.from_bytes(abilityBytes[:2], 'big') # dont really intend to randomize additional reqs, so just treat this as an int
+        rank = int.from_bytes(abilityBytes[2:4], 'big')
+        abilityId = int.from_bytes(abilityBytes[4:6], 'big')
         # abilityBytes.seek(8)
-        bitflag = int.from_bytes(abilityBytes[8:])
+        bitflag = int.from_bytes(abilityBytes[8:], 'big')
 
         return AbilityEntry(rank, abilityId, reqs, bitflag)
 
-    def write(self, file):
-        entryBytes = self.reqs.to_bytes(2) + self.rank.to_bytes(2) + self.abilityId.to_bytes(2) + b'\x00\x00' + self.bitflag.to_bytes(4)
-        file.write(entryBytes)
+    def to_bytes(self):
+        entryBytes = self.reqs.to_bytes(2, 'big') + self.rank.to_bytes(2, 'big') + self.abilityId.to_bytes(2, 'big') + b'\x00\x00' + self.bitflag.to_bytes(4, 'big')
+        return entryBytes
 
     def empty():
         return AbilityEntry()
 
     def is_empty(self):
-        return self == AbilityEntry.empty()
+        return self.abilityId == 0
 
 class ConfidantEntry:
-    def __init__(self, abilities = []):
-        self.abilities = abilities
+    def __init__(self, abilities = None):
+        if abilities is None:
+            self.abilities = []
+        else:
+            self.abilities = abilities
 
     def from_bytes(confidantBytes):
         abilities = []
@@ -40,13 +43,15 @@ class ConfidantEntry:
             abilities.append(AbilityEntry.from_bytes(confidantBytes[start:end]))
         return ConfidantEntry(abilities)
 
-    def write(self, file):
+    def to_bytes(self):
+        confidantBytes = b''
         for ability in self.abilities:
-            ability.write(file)
+            confidantBytes += ability.to_bytes()
+        return confidantBytes
 
 def ReadCmmFunctionTable(file):
     for i in range(38):
-        file.seek(32 + i * 120)
+        file.seek(48 + i * 120)
         confidantList.append(ConfidantEntry.from_bytes(file.read(120)))
 
 def ShuffleAbilities():
@@ -62,11 +67,11 @@ def ShuffleAbilities():
     allAbilityEntries = []
     for confidant in trimmedConfidantDict.values():
         for ability in confidant.abilities:
-            if ability.abilityId != 0:
+            if not ability.is_empty():
                 allAbilityEntries.append(ability)
 
     newConfidantDict = {}
-    availableConfidants = list(trimmedConfidantDict)
+    availableConfidants = list(trimmedConfidantDict.keys())
     for i in range(38):
         newConfidantDict[i] = ConfidantEntry()
 
@@ -83,6 +88,7 @@ def ShuffleAbilities():
             ability.rank = random.randint(1, 10)
         newConfidantDict[confidantId].abilities.append(ability)
         print(f"appended ability to confidant {confidantId}, ability length {len(newConfidantDict[confidantId].abilities)}")
+
         if len(newConfidantDict[confidantId].abilities) >= maxAbilities:
             availableConfidants.remove(confidantId)
             print(f"removed {confidantId} from available confidants")
@@ -111,10 +117,11 @@ def GetNumAbilities(confidantId):
 
 def WriteCmmFunctionTable(file):
     for i in range(1, 38):
-        file.seek(32 + i * 120)
-        confidantList[i].write(file)
+        file.seek(48 + i * 120)
+        file.write(confidantList[i].to_bytes())
 
-preserveRank = sys.argv[-1] == "preserve_rank"
+preserveRank = sys.argv[1] == 'preserve_rank'
+print(f"preserve rank is {preserveRank}")
 with open("cmmFunctionTable.ctd", "r+b") as file:
     ReadCmmFunctionTable(file)
     ShuffleAbilities()
