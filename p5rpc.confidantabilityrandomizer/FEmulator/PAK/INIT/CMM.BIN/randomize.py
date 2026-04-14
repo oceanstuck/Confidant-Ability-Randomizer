@@ -3,7 +3,7 @@ import sys, random
 confidantList = []
 
 class AbilityEntry:
-    def __init__(self, rank = -1, abilityId = 0, reqs = 0, bitflag = 0):
+    def __init__(self, rank = 65535, abilityId = 0, reqs = 0, bitflag = 0):
         self.rank = rank
         self.abilityId = abilityId
         self.reqs = reqs
@@ -19,11 +19,12 @@ class AbilityEntry:
         return AbilityEntry(rank, abilityId, reqs, bitflag)
 
     def to_bytes(self):
+        # print(f"ability id {self.abilityId}, rank {self.rank}")
         entryBytes = self.reqs.to_bytes(2, 'big') + self.rank.to_bytes(2, 'big') + self.abilityId.to_bytes(2, 'big') + b'\x00\x00' + self.bitflag.to_bytes(4, 'big')
         return entryBytes
 
     def empty():
-        return AbilityEntry()
+        return AbilityEntry() # in templates/patterns rank will appear as -1, but using signed value causes an OverflowError when writing bytes so ive represented it as ushort max instead
 
     def is_empty(self):
         return self.abilityId == 0
@@ -49,12 +50,16 @@ class ConfidantEntry:
             confidantBytes += ability.to_bytes()
         return confidantBytes
 
+    def sort(self):
+        self.abilities.sort(key = lambda ability : ability.rank)
+
 def ReadCmmFunctionTable(file):
     for i in range(38):
         file.seek(48 + i * 120)
         confidantList.append(ConfidantEntry.from_bytes(file.read(120)))
 
 def ShuffleAbilities():
+    excludedAbilityIds = [11]
     platonicIdDict = { 3: 23, 4: 24, 7: 25, 10: 26, 11: 27, 14: 28, 15: 29, 16: 30, 18: 31, 21: 32, 33: 34, 36: 37 }
 
     trimmedConfidantDict = {}
@@ -64,18 +69,24 @@ def ShuffleAbilities():
     trimmedConfidantDict[35] = confidantList[35]
     trimmedConfidantDict[36] = confidantList[36]
 
-    allAbilityEntries = []
-    for confidant in trimmedConfidantDict.values():
+    validAbilityEntries = []
+    excludedAbilityEntries = []
+    for confidantId, confidant in trimmedConfidantDict.items():
         for ability in confidant.abilities:
-            if not ability.is_empty():
-                allAbilityEntries.append(ability)
+            if excludedAbilityIds.count(ability.abilityId) > 0:
+                excludedAbilityEntries.append((confidantId, ability))
+            elif not ability.is_empty():
+                validAbilityEntries.append(ability)
 
     newConfidantDict = {}
     availableConfidants = list(trimmedConfidantDict.keys())
     for i in range(38):
         newConfidantDict[i] = ConfidantEntry()
 
-    for ability in allAbilityEntries:
+    for excludedAbility in excludedAbilityEntries:
+        newConfidantDict[excludedAbility[0]].abilities.append(excludedAbility[1])
+
+    for ability in validAbilityEntries:
         # print(f"ability id {ability.abilityId}")
         confidantId = availableConfidants[random.randint(0, len(availableConfidants) - 1)]
         print(f"confidant id {confidantId}")
@@ -95,6 +106,7 @@ def ShuffleAbilities():
             print(f"removed {confidantId} from available confidants")
 
     for confidant in newConfidantDict.values():
+        confidant.sort()
         while len(confidant.abilities) < 10:
             confidant.abilities.append(AbilityEntry.empty())
 
@@ -121,7 +133,7 @@ def WriteCmmFunctionTable(file):
         file.seek(48 + i * 120)
         file.write(confidantList[i].to_bytes())
 
-preserveRank = sys.argv[1] == 'preserve_rank'
+preserveRank = sys.argv[-1] == 'preserve_rank'
 print(f"preserve rank is {preserveRank}")
 with open("cmmFunctionTable.ctd", "r+b") as file:
     ReadCmmFunctionTable(file)
